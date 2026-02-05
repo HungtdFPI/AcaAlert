@@ -143,6 +143,7 @@ export const api = {
                 dvsv_note: report.dvsv_note,
                 dvsv_status: report.dvsv_status,
                 status: report.status,
+                study_status: report.study_status,
                 updated_at: new Date().toISOString()
             })
             .eq('id', report.id);

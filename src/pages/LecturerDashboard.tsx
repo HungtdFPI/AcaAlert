@@ -234,15 +234,7 @@ export default function LecturerDashboard() {
                         />
                     </div>
 
-                    {/* Desktop View (Large Screens) */}
-                    <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <EditableTable
-                            reports={filteredReports}
-                            onUpdate={handleUpdateReport}
-                            onSave={handleSaveReport}
-                            onDelete={handleDeleteReport}
-                        />
-                    </div>
+
 
                     {/* Mobile & Tablet View (< 1024px) */}
                     <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4 pb-24">
