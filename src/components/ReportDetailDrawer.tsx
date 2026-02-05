@@ -123,11 +123,15 @@ export function ReportDetailDrawer({ isOpen, onClose, report, onUpdate, onSave }
                             <div className="w-12 h-1.5 bg-gray-300 rounded-full mx-auto mb-4" />
                             <div className="flex justify-between items-start">
                                 <div>
-                                    <h3 className="text-lg font-bold text-gray-900">{report.student_name}</h3>
-                                    <p className="text-sm text-gray-500">{report.class_name} • {report.student_code}</p>
+                                    <div className="flex items-center gap-2 mb-1">
+                                        <Badge variant="secondary" className="text-[10px] h-5 px-1.5 bg-gray-100 text-gray-600 border border-gray-200">{report.campus || 'HN'}</Badge>
+                                        <h3 className="text-lg font-bold text-gray-900">{report.student_name}</h3>
+                                    </div>
+                                    <p className="text-sm text-gray-600 font-medium mb-0.5">{report.class_name} • <span className="text-gray-500 font-normal">{report.student_code}</span></p>
+                                    <p className="text-xs text-indigo-600 font-medium">{report.subject}</p>
                                 </div>
-                                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-100 -mt-2 -mr-2">
-                                    <X className="w-6 h-6 text-gray-500" />
+                                <Button variant="ghost" size="icon" onClick={onClose} className="rounded-full hover:bg-gray-100 -mt-2 -mr-2 text-gray-400">
+                                    <X className="w-6 h-6" />
                                 </Button>
                             </div>
                         </div>

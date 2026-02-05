@@ -52,16 +52,20 @@ export default function DashboardLayout() {
 
     return (
         <div className="min-h-screen bg-slate-50 flex flex-col md:flex-row font-sans">
-            {/* Mobile Header */}
+            {/* Mobile Header (Logo + Bell Only) */}
             <div className="md:hidden bg-white border-b px-4 py-3 flex items-center justify-between sticky top-0 z-50 shadow-sm">
                 <div className="flex items-center gap-2">
-                    <img src="/logo-fpi.png" alt="FPT Polytechnic International" className="h-14 object-contain" />
+                    <img src="/logo-fpi.png" alt="FPT Polytechnic International" className="h-10 object-contain" />
+                    <span className="text-xs font-bold text-slate-500 uppercase tracking-widest hidden sm:block">Academic Alert</span>
                 </div>
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 px-2 py-1 bg-slate-50 rounded-full border border-slate-100">
+                        <div className="w-5 h-5 rounded-full bg-indigo-100 flex items-center justify-center text-[10px] text-indigo-700 font-bold">
+                            {profile?.full_name?.charAt(0) || 'U'}
+                        </div>
+                        <span className="text-xs font-medium text-slate-700 max-w-[80px] truncate">{profile?.full_name}</span>
+                    </div>
                     <NotificationBell />
-                    <Button variant="ghost" size="icon" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-                        <Menu className="w-6 h-6" />
-                    </Button>
                 </div>
             </div>
 
@@ -150,7 +154,69 @@ export default function DashboardLayout() {
                 </div>
             </motion.div>
 
-            {/* Mobile Menu Overlay */}
+            {/* Mobile Bottom Navigation Bar */}
+            <div className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-2 py-2 flex items-center justify-around z-50 pb-[max(8px,env(safe-area-inset-bottom))] shadow-[0_-5px_15px_rgba(0,0,0,0.05)]">
+                <button
+                    onClick={() => navigate('/')}
+                    className={cn(
+                        "flex flex-col items-center justify-center p-2 rounded-xl transition-all w-16",
+                        location.pathname === '/' ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-50"
+                    )}
+                >
+                    <LayoutDashboard className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] font-medium">Home</span>
+                </button>
+
+                {profile?.role === 'gv' && (
+                    <button
+                        onClick={() => navigate('/my-reports')}
+                        className={cn(
+                            "flex flex-col items-center justify-center p-2 rounded-xl transition-all w-16",
+                            location.pathname === '/my-reports' ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-50"
+                        )}
+                    >
+                        <FileText className="w-6 h-6 mb-1" />
+                        <span className="text-[10px] font-medium">Báo cáo</span>
+                    </button>
+                )}
+
+                {(profile?.role === 'cnbm' || profile?.role === 'truong_nganh') && (
+                    <button
+                        onClick={() => navigate('/approve-reports')}
+                        className={cn(
+                            "flex flex-col items-center justify-center p-2 rounded-xl transition-all w-16",
+                            location.pathname === '/approve-reports' ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-50"
+                        )}
+                    >
+                        <FileText className="w-6 h-6 mb-1" />
+                        <span className="text-[10px] font-medium">Duyệt</span>
+                    </button>
+                )}
+
+                <button
+                    onClick={() => navigate('/profile')}
+                    className={cn(
+                        "flex flex-col items-center justify-center p-2 rounded-xl transition-all w-16",
+                        location.pathname === '/profile' ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-50"
+                    )}
+                >
+                    <User className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] font-medium">Hồ sơ</span>
+                </button>
+
+                <button
+                    onClick={() => setMobileMenuOpen(true)}
+                    className={cn(
+                        "flex flex-col items-center justify-center p-2 rounded-xl transition-all w-16",
+                        mobileMenuOpen ? "bg-indigo-50 text-indigo-600" : "text-slate-400 hover:bg-slate-50"
+                    )}
+                >
+                    <Menu className="w-6 h-6 mb-1" />
+                    <span className="text-[10px] font-medium">Menu</span>
+                </button>
+            </div>
+
+            {/* Mobile Menu Overlay (Triggered by 'Menu' tab) */}
             <AnimatePresence>
                 {mobileMenuOpen && (
                     <>
@@ -162,45 +228,33 @@ export default function DashboardLayout() {
                             onClick={() => setMobileMenuOpen(false)}
                         />
                         <motion.div
-                            initial={{ x: "-100%" }}
+                            initial={{ x: "100%" }}
                             animate={{ x: 0 }}
-                            exit={{ x: "-100%" }}
+                            exit={{ x: "100%" }}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            className="fixed inset-y-0 left-0 z-50 w-72 bg-white shadow-2xl md:hidden"
+                            className="fixed inset-y-0 right-0 z-50 w-72 bg-white shadow-2xl md:hidden flex flex-col h-full pb-20" // pb-20 to account for bottom nav
                         >
-                            {/* Reusing desktop layout logic for mobile sidebar content efficiently */}
                             <div className="h-full flex flex-col">
-                                <div className="p-6 border-b flex items-center justify-center">
-                                    <img src="/logo-fpi.png" alt="FPT Polytechnic International" className="h-16 object-contain" />
-                                </div>
-                                <div className="p-6 border-b bg-slate-50">
-                                    <div className="flex items-center space-x-3">
-                                        <div className="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold border-2 border-white shadow-sm">
+                                <div className="p-6 border-b flex items-center justify-center bg-indigo-600 text-white">
+                                    <div className="text-center">
+                                        <div className="w-16 h-16 rounded-full bg-white/20 mx-auto flex items-center justify-center text-2xl font-bold mb-2 backdrop-blur-md">
                                             {profile?.full_name?.charAt(0) || 'U'}
                                         </div>
-                                        <div className="overflow-hidden">
-                                            <p className="font-bold text-sm text-slate-900 truncate">{profile?.full_name}</p>
-                                            <p className="text-xs text-slate-500">
-                                                {profile && ROLE_NAMES[profile.role]} - {profile && CAMPUS_NAMES[profile.campus]}
-                                            </p>
-                                        </div>
+                                        <p className="font-bold text-lg">{profile?.full_name}</p>
+                                        <p className="text-xs opacity-80 uppercase tracking-widest">{profile && ROLE_NAMES[profile.role]}</p>
                                     </div>
                                 </div>
-                                <nav className="flex-1 py-4 overflow-y-auto px-2">
-                                    <button onClick={() => { navigate('/'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg mb-1"><LayoutDashboard className="w-5 h-5 mr-3" />Tổng quan</button>
-                                    {profile?.role === 'gv' && (
-                                        <button onClick={() => { navigate('/my-reports'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg mb-1"><FileText className="w-5 h-5 mr-3" />Báo cáo của tôi</button>
-                                    )}
-                                    {(profile?.role === 'cnbm' || profile?.role === 'truong_nganh') && (
-                                        <button onClick={() => { navigate('/approve-reports'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg mb-1"><FileText className="w-5 h-5 mr-3" />Duyệt báo cáo</button>
-                                    )}
-                                    <button onClick={() => { navigate('/profile'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg mb-1"><User className="w-5 h-5 mr-3" />Hồ sơ cá nhân</button>
+                                <div className="p-4 bg-slate-50 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                    Menu Mở Rộng
+                                </div>
+                                <nav className="flex-1 py-2 overflow-y-auto px-2 space-y-1">
                                     {profile?.role === 'truong_nganh' && (
-                                        <button onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-3 text-sm font-medium text-slate-600 hover:bg-slate-100 rounded-lg mb-1"><Settings className="w-5 h-5 mr-3" />Quản trị hệ thống</button>
+                                        <button onClick={() => { navigate('/admin'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-4 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl"><Settings className="w-5 h-5 mr-3 text-slate-400" />Quản trị hệ thống</button>
                                     )}
+                                    <button onClick={() => { navigate('/profile'); setMobileMenuOpen(false); }} className="flex items-center w-full px-4 py-4 text-sm font-medium text-slate-700 hover:bg-slate-100 rounded-xl"><User className="w-5 h-5 mr-3 text-slate-400" />Thông tin tài khoản</button>
                                 </nav>
-                                <div className="p-4 border-t">
-                                    <Button variant="outline" className="w-full text-red-600" onClick={handleSignOut}>
+                                <div className="p-4 border-t mt-auto">
+                                    <Button variant="outline" className="w-full text-red-600 border-red-100 hover:bg-red-50" onClick={handleSignOut}>
                                         <LogOut className="w-4 h-4 mr-2" /> Đăng xuất
                                     </Button>
                                 </div>
@@ -211,7 +265,7 @@ export default function DashboardLayout() {
             </AnimatePresence>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-y-auto bg-slate-50">
+            <main className="flex-1 overflow-y-auto bg-slate-50 pb-20 md:pb-0">
                 <div className="container mx-auto p-4 md:p-8 max-w-7xl animate-in fade-in zoom-in duration-300">
                     <Outlet />
                 </div>
