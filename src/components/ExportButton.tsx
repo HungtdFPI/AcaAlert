@@ -88,7 +88,7 @@ export function ExportButton({ data, fileName = 'Bao_Cao_Hoc_Vu.xlsx', className
         <Button
             onClick={handleExport}
             variant="outline"
-            className={`text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 ${className}`}
+            className={`w-full md:w-auto text-green-600 hover:text-green-700 hover:bg-green-50 border-green-200 whitespace-nowrap ${className}`}
         >
             <Download className="w-4 h-4 mr-2" />
             Xuất Excel

@@ -154,8 +154,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(false);
     };
 
-    // In-memory store for demo users to simulate registration persistence during a session
-    const [demoUsers, setDemoUsers] = useState<Record<string, Partial<Profile>>>({});
+    // In-memory store for demo users, persisted to localStorage
+    const [demoUsers, setDemoUsers] = useState<Record<string, Partial<Profile>>>(() => {
+        try {
+            const saved = localStorage.getItem('demo_users');
+            return saved ? JSON.parse(saved) : {};
+        } catch (error) {
+            console.error('Failed to load demo users', error);
+            return {};
+        }
+    });
+
+    // Save to localStorage whenever demoUsers changes
+    useEffect(() => {
+        try {
+            localStorage.setItem('demo_users', JSON.stringify(demoUsers));
+        } catch (error) {
+            console.error('Failed to save demo users', error);
+        }
+    }, [demoUsers]);
 
     const registerDemoUser = async (email: string, fullName: string, campus: CampusCode, role: UserRole = 'gv') => {
         setLoading(true);
@@ -357,13 +374,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                 // Handle Real User Update (Supabase)
                 if (!user) throw new Error('No user logged in');
 
+                // Upsert logic: Update if exists, Insert if not (but we need ID)
+                // Since this is updateProfile, we typically assume profile exists, but upsert is safer
                 const { error } = await supabase
                     .from('profiles')
-                    .update({
+                    .upsert({
+                        id: user.id, // Required for upsert to know which row
+                        email: user.email, // Required if inserting new
+                        role: profile?.role || 'gv', // Fallbacks to ensure valid row
+                        campus: profile?.campus || 'HN',
+                        full_name: profile?.full_name || '',
                         ...updates,
                         updated_at: new Date().toISOString()
-                    })
-                    .eq('id', user.id);
+                    });
 
                 if (error) {
                     // Fallback for network issues in "Real" mode if acting as demo
@@ -374,8 +397,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
                     return { error };
                 }
 
-                // Refresh profile to get latest data
-                await fetchProfile(user.id);
+                // Optimistic / Instant Local Update
+                // We assume the DB update succeeded (since we checked error above)
+                // so we update the local state immediately without re-fetching.
+                if (profile) {
+                    const updatedProfile = { ...profile, ...updates, updated_at: new Date().toISOString() };
+                    setProfile(updatedProfile as Profile);
+                }
+
                 return { error: null };
             }
         } catch (err: any) {

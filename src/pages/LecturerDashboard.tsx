@@ -14,6 +14,8 @@ import { StudentEntryModal } from '../components/StudentEntryModal';
 import { DateFilter, type DateFilterType } from '../components/DateFilter';
 import { ExportButton } from '../components/ExportButton';
 
+import { ReportDetailDrawer } from '../components/ReportDetailDrawer';
+
 export default function LecturerDashboard() {
     const { user, profile } = useAuth();
     const [reports, setReports] = useState<Report[]>([]);
@@ -21,6 +23,7 @@ export default function LecturerDashboard() {
     const [searchTerm, setSearchTerm] = useState('');
     const [dateFilter, setDateFilter] = useState<DateFilterType>('all');
     const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
+    const [selectedReport, setSelectedReport] = useState<Report | null>(null);
 
     const isGuest = user?.role === ('guest' as any) || user?.id?.startsWith('demo-');
 
@@ -125,29 +128,43 @@ export default function LecturerDashboard() {
     }
 
     const filteredReports = reports.filter(r => {
-        // Text Search
-        const matchesSearch = r.student_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.student_code.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            r.class_name.toLowerCase().includes(searchTerm.toLowerCase());
+        if (!r) return false;
 
-        // Date Filter
+        // Text Search Safeguard
+        const sName = r.student_name || '';
+        const sCode = r.student_code || '';
+        const cName = r.class_name || '';
+        const term = searchTerm.toLowerCase();
+
+        const matchesSearch = sName.toLowerCase().includes(term) ||
+            sCode.toLowerCase().includes(term) ||
+            cName.toLowerCase().includes(term);
+
+        // Date Filter Safeguard
         let matchesDate = true;
         if (dateFilter !== 'all') {
-            const date = new Date(r.created_at);
-            const now = new Date();
-            date.setHours(0, 0, 0, 0);
-            now.setHours(0, 0, 0, 0);
+            try {
+                const date = new Date(r.created_at);
+                if (isNaN(date.getTime())) return false; // Skip invalid dates
 
-            if (dateFilter === 'today') {
-                matchesDate = date.getTime() === now.getTime();
-            } else if (dateFilter === 'week') {
-                const day = now.getDay();
-                const diff = now.getDate() - day + (day === 0 ? -6 : 1); // adjust when day is sunday
-                const monday = new Date(now.setDate(diff));
-                matchesDate = date >= monday;
-            } else if (dateFilter === 'month') {
-                matchesDate = date.getMonth() === new Date().getMonth() &&
-                    date.getFullYear() === new Date().getFullYear();
+                const now = new Date();
+                date.setHours(0, 0, 0, 0);
+                now.setHours(0, 0, 0, 0);
+
+                if (dateFilter === 'today') {
+                    matchesDate = date.getTime() === now.getTime();
+                } else if (dateFilter === 'week') {
+                    const day = now.getDay();
+                    const diff = now.getDate() - day + (day === 0 ? -6 : 1);
+                    const monday = new Date(now.setDate(diff));
+                    matchesDate = date >= monday;
+                } else if (dateFilter === 'month') {
+                    matchesDate = date.getMonth() === new Date().getMonth() &&
+                        date.getFullYear() === new Date().getFullYear();
+                }
+            } catch (e) {
+                console.warn("Date parse error", e);
+                return false;
             }
         }
 
@@ -162,21 +179,23 @@ export default function LecturerDashboard() {
                     <p className="text-slate-500">Nhập và theo dõi tình hình học tập của sinh viên.</p>
                 </div>
 
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" size="sm" onClick={handleClearMock} className="text-red-600 hover:text-red-700 hover:bg-red-50">
+                <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
+                    <Button variant="outline" size="sm" onClick={handleClearMock} className="flex-1 md:flex-none text-red-600 hover:text-red-700 hover:bg-red-50 whitespace-nowrap">
                         <Trash2 className="w-4 h-4 mr-2" />
                         Xóa nháp
                     </Button>
-                    <Button variant="outline" size="sm" onClick={() => setIsEntryModalOpen(true)} className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50">
+                    <Button variant="outline" size="sm" onClick={() => setIsEntryModalOpen(true)} className="flex-1 md:flex-none text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 whitespace-nowrap">
                         <PenSquare className="w-4 h-4 mr-2" />
-                        Nhập thông tin
+                        Nhập
                     </Button>
-                    <Button variant="outline" size="sm" onClick={handleGenerateMock} className="text-blue-600 hover:text-blue-700 hover:bg-blue-50">
+                    <Button variant="outline" size="sm" onClick={handleGenerateMock} className="flex-1 md:flex-none text-blue-600 hover:text-blue-700 hover:bg-blue-50 whitespace-nowrap">
                         <PlusCircle className="w-4 h-4 mr-2" />
-                        Tạo mẫu
+                        Mẫu
                     </Button>
-                    <ExportButton data={filteredReports} />
-                    <Button onClick={handleSubmitAll} className="bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
+                    <div className="flex-1 md:flex-none">
+                        <ExportButton data={filteredReports} />
+                    </div>
+                    <Button onClick={handleSubmitAll} className="w-full md:w-auto bg-indigo-600 hover:bg-indigo-700 shadow-lg shadow-indigo-200">
                         <Send className="w-4 h-4 mr-2" />
                         Gửi báo cáo
                     </Button>
@@ -206,7 +225,7 @@ export default function LecturerDashboard() {
             ) : (
                 <>
                     {/* Desktop View */}
-                    <div className="hidden md:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                    <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <EditableTable
                             reports={filteredReports}
                             onUpdate={handleUpdateReport}
@@ -215,17 +234,37 @@ export default function LecturerDashboard() {
                         />
                     </div>
 
-                    {/* Mobile View */}
-                    <div className="md:hidden space-y-4">
+                    {/* Desktop View (Large Screens) */}
+                    <div className="hidden lg:block bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <EditableTable
+                            reports={filteredReports}
+                            onUpdate={handleUpdateReport}
+                            onSave={handleSaveReport}
+                            onDelete={handleDeleteReport}
+                        />
+                    </div>
+
+                    {/* Mobile & Tablet View (< 1024px) */}
+                    <div className="lg:hidden grid grid-cols-1 md:grid-cols-2 gap-4 pb-24">
                         {filteredReports.map(report => (
                             <ReportCard
                                 key={report.id}
                                 report={report}
-                                onUpdate={handleUpdateReport}
-                                onSave={handleSaveReport}
-                                onDelete={handleDeleteReport}
+                                onClick={() => setSelectedReport(report)}
                             />
                         ))}
+
+                        {/* Drawer */}
+                        {selectedReport && (
+                            <ReportDetailDrawer
+                                isOpen={true}
+                                onClose={() => setSelectedReport(null)}
+                                report={selectedReport}
+                                onUpdate={handleUpdateReport}
+                                onSave={handleSaveReport}
+                            />
+                        )}
+
                         {filteredReports.length === 0 && (
                             <div className="flex flex-col items-center justify-center py-16 px-4 bg-white rounded-xl border border-dashed border-slate-300">
                                 <div className="bg-slate-50 p-4 rounded-full mb-4">
