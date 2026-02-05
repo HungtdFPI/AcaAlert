@@ -158,7 +158,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const [demoUsers, setDemoUsers] = useState<Record<string, Partial<Profile>>>(() => {
         try {
             const saved = localStorage.getItem('demo_users');
-            return saved ? JSON.parse(saved) : {};
+            if (saved) return JSON.parse(saved);
+
+            // Default demo users if local storage is empty
+            return {
+                'admin@fpt.edu.vn': { id: 'demo-admin@fpt.edu.vn', email: 'admin@fpt.edu.vn', full_name: 'Trưởng Ngành (Admin)', role: 'truong_nganh', campus: 'HN' },
+                'gv_hn@fpt.edu.vn': { id: 'demo-gv_hn@fpt.edu.vn', email: 'gv_hn@fpt.edu.vn', full_name: 'Giảng Viên (HN)', role: 'gv', campus: 'HN' },
+                'cnbm_hn@fpt.edu.vn': { id: 'demo-cnbm_hn@fpt.edu.vn', email: 'cnbm_hn@fpt.edu.vn', full_name: 'Chủ Nhiệm Bộ Môn (HN)', role: 'cnbm', campus: 'HN' }
+            };
         } catch (error) {
             console.error('Failed to load demo users', error);
             return {};
@@ -178,9 +185,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         await new Promise(resolve => setTimeout(resolve, 800)); // Simulate returning
 
+        const newProfile: Partial<Profile> = {
+            id: `demo-${email}`,
+            email,
+            full_name: fullName,
+            campus,
+            role
+        };
+
         setDemoUsers(prev => ({
             ...prev,
-            [email]: { full_name: fullName, campus, role }
+            [email]: newProfile
         }));
 
         setLoading(false);
@@ -189,7 +204,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const updateDemoUser = async (email: string, updates: Partial<Profile>) => {
         setDemoUsers(prev => ({
             ...prev,
-            [email]: { ...(prev[email] || {}), ...updates }
+            [email]: { ...(prev[email] || { id: `demo-${email}`, email }), ...updates }
         }));
     };
 
@@ -197,75 +212,40 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setLoading(true);
         await new Promise(resolve => setTimeout(resolve, 800));
 
-        // 1. Check in-memory demo users first (Registered in this session)
-        if (demoUsers[email]) {
-            const demoProfile = demoUsers[email];
-            const mockUser: User = {
-                id: `demo-${email}`,
-                aud: 'authenticated',
-                role: 'authenticated',
-                email: email,
-                app_metadata: { provider: 'email' },
-                user_metadata: {
-                    full_name: demoProfile.full_name,
-                    role: demoProfile.role,
-                    campus: demoProfile.campus
-                },
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString(),
-            } as User;
-
-            const mockProfile: Profile = {
-                id: `demo-${email}`,
-                email: email,
-                full_name: demoProfile.full_name || email,
-                role: demoProfile.role || 'gv',
-                campus: demoProfile.campus || 'HN',
-            };
-
-            setSession({
-                access_token: 'mock-token',
-                refresh_token: 'mock-refresh-token',
-                expires_in: 3600,
-                token_type: 'bearer',
-                user: mockUser,
-            });
-            setUser(mockUser);
-            setProfile(mockProfile);
-            setLoading(false);
-            return;
-        }
-
-        // 2. Dynamic parsing logic for demo accounts: [role]_[campus]@fpt.edu.vn
-        // Example: gv_hn@fpt.edu.vn -> role: gv, campus: HN
-        // exceptions: admin@fpt.edu.vn -> role: truong_nganh, campus: HN (default)
-
         let role: UserRole | undefined;
         let campus: CampusCode = 'HN';
         let fullName = 'Người dùng Demo';
 
-        const prefix = email.split('@')[0]; // gv_hn
-
-        if (prefix === 'admin') {
-            role = 'truong_nganh';
-            fullName = 'Trưởng Ngành (Admin)';
-            campus = 'HN'; // Default
+        // 1. Check in-memory demo users first (Registered in this session or loaded from localStorage)
+        if (demoUsers[email]) {
+            const demoProfile = demoUsers[email];
+            if (demoProfile.role) role = demoProfile.role;
+            if (demoProfile.campus) campus = demoProfile.campus;
+            if (demoProfile.full_name) fullName = demoProfile.full_name;
         } else {
-            const parts = prefix.split('_');
-            if (parts.length >= 2) {
-                const rolePart = parts[0]; // gv, cnbm, dvsv or gv1, gv2
-                const campusPart = parts[1].toUpperCase(); // HN, DN, HCM, CT
+            // 2. Dynamic parsing logic for demo accounts if not found in memory
+            const prefix = email.split('@')[0]; // gv_hn
+            // ... parsing logic ...
+            if (prefix === 'admin') {
+                role = 'truong_nganh';
+                fullName = 'Trưởng Ngành (Admin)';
+                campus = 'HN';
+            } else {
+                const parts = prefix.split('_');
+                if (parts.length >= 2) {
+                    const rolePart = parts[0];
+                    const campusPart = parts[1].toUpperCase();
 
-                // Extract core role from potential number (gv1 -> gv)
-                const roleMatch = rolePart.match(/^([a-z]+)\d*$/);
-                const coreRole = roleMatch ? roleMatch[1] : rolePart;
+                    const roleMatch = rolePart.match(/^([a-z]+)\d*$/);
+                    const coreRole = roleMatch ? roleMatch[1] : rolePart;
 
-                if (['gv', 'cnbm', 'dvsv', 'tbdt'].includes(coreRole)) {
-                    role = coreRole as UserRole;
-                }
+                    if (['gv', 'cnbm', 'dvsv', 'tbdt'].includes(coreRole)) {
+                        role = coreRole as UserRole;
+                    }
 
-                if (['HN', 'DN', 'HCM', 'CT'].includes(campusPart)) {
-                    campus = campusPart as CampusCode;
+                    if (['HN', 'DN', 'HCM', 'CT'].includes(campusPart)) {
+                        campus = campusPart as CampusCode;
+                    }
                 }
             }
         }
